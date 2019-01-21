@@ -1,4 +1,4 @@
-from Utils import *
+from utils import *
 from thread import *
 from math import pi
 import time
@@ -18,7 +18,7 @@ parser.add_argument('-v', '--visualization', dest="vis", type=int,
                     help='visualization on/off')
 
 parser.add_argument('-rr', '--', dest="render_rate", type=int,
-                    default=10,
+                    default=60,
                     help='Render every nth frame')
 
 parser.add_argument('-p', '--port', dest="port1", type=int,
@@ -47,139 +47,247 @@ random.seed(args.rng)
 
 host = '127.0.0.1'   # Symbolic name meaning all available interfaces
 
-noise = args.noise
-if noise == 1:
-    noise1 = 0.005
-    noise2 = 0.01
-    noise3 = 2
-else:
-    noise1 = 0
-    noise2 = 0
-    noise3 = 0
 
 timeout_msg = "TIMED OUT"
 timeout_period = 0.5
 
 ##########################################################################
 
-# Play one step of carrom
-# Input: state, player, action
-# Output: next_state, queen_flag, reward
-# queen_flag denotes that the queen is pocketed and must be covered in the
-# next turn
+
 
 
 def play(state, player, action):
     pygame.init()
+    screen = pygame.display.set_mode((width,height)) 
+    pygame.display.set_caption("ERA RL Simulation")
     clock = pygame.time.Clock()
-
-    if vis == 1:
-        screen = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
-        pygame.display.set_caption("Carrom RL Simulation")
-
+    running = True
+    font = pygame.font.SysFont("Arial", 16)
+    ### Physics stuff
     space = pymunk.Space(threaded=True)
-    score = state["Score"]
-    prevscore = state["Score"]
+    draw_options = pymunk.pygame_util.DrawOptions(screen)
 
-    # pass through object // Dummy Object for handling collisions
-    passthrough = pymunk.Segment(space.static_body, (0, 0), (0, 0), 5)
-    passthrough.collision_type = 2
-    passthrough.filter = pymunk.ShapeFilter(categories=0b1000)
-
-    init_space(space)
-    init_walls(space)
-    pockets = init_pockets(space)
-    background = BACKGROUND('use_layout.png', [-30, -30])
-
-    coins = init_coins(space, state["Black_Locations"], state[
-                       "White_Locations"], state["Red_Location"], passthrough)
-
-    striker = init_striker(space, BOARD_SIZE / 2 + 10,
-                           passthrough, action, player)
-
-    if vis == 1:
-        draw_options = pymunk.pygame_util.DrawOptions(screen)
-
+    setup_level(space)
     ticks = 0
-    foul = False
-    pocketed = []
-    queen_pocketed = False
-    queen_flag = False
+    
+
+    # Player description
+    
+    # player 1
+    player1_body = pymunk.Body(500,pymunk.inf)
+    player1_body.position = 300, 100
+    player1_shape = pymunk.Circle(player1_body, (300*f2))
+    player1_shape.elasticity = 0
+    player1_shape.friction = 1.0
+    player1_shape.color = THECOLORS['red']
+    player1_shape.collision_type = collision_types["player"]
+    
+    player1_shape3 = pymunk.Segment(player1_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+    player1_shape3.color=THECOLORS['black']
+    player1_shape3.collision_type = collision_types["armor1"]
+
+    player1_shape4 = pymunk.Segment(player1_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+    player1_shape4.color=THECOLORS['black']
+    player1_shape4.collision_type = collision_types["armor1"]
+
+    player1_shape5 = pymunk.Segment(player1_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+    player1_shape5.color=THECOLORS['black']
+    player1_shape5.collision_type = collision_types["armor1"]
+
+    player1_shape6 = pymunk.Segment(player1_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+    player1_shape6.color=THECOLORS['black']
+    player1_shape6.collision_type = collision_types["armor1"]
+    anglen=player1_shape6._get_normal
+    
+
+    angle=0
+    player1_shape7 = pymunk.Segment(player1_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+    player1_shape7.color = THECOLORS['blue']
+    
+
+
+    #player 2
+    player2_body = pymunk.Body(500,pymunk.inf)
+    player2_body.position = 500, 600
+    
+    player2_shape = pymunk.Circle(player2_body, (300*f2))
+    player2_shape.elasticity = 0
+    player2_shape.friction = 1.0
+    player2_shape.color = THECOLORS['red']
+
+    player2_shape.collision_type = collision_types["player2"]
+    
+
+
+
+    player2_shape3 = pymunk.Segment(player2_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+    player2_shape3.color=THECOLORS['black']
+    player2_shape3.collision_type = collision_types["armor2"]
+
+    player2_shape4 = pymunk.Segment(player2_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+    player2_shape4.color=THECOLORS['black']
+    player2_shape4.collision_type = collision_types["armor2"]
+
+    player2_shape5 = pymunk.Segment(player2_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+    player2_shape5.color=THECOLORS['black']
+    player2_shape5.collision_type = collision_types["armor2"]
+
+    player2_shape6 = pymunk.Segment(player2_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+    player2_shape6.color=THECOLORS['black']
+    player2_shape6.collision_type = collision_types["armor2"]
+    
+    
+
+    angle=0
+    player2_shape7 = pymunk.Segment(player2_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+    player2_shape7.color = THECOLORS['blue']
+
+
+
+
+    def remove_first(arbiter, space, data):
+        ball_shape = arbiter.shapes[0]
+        space.remove(ball_shape, ball_shape.body)
+        return True
+    h = space.add_collision_handler(
+        collision_types["ball"], 
+        collision_types["brick"])
+    h.begin = remove_first
+
+    def hit_armor(arbiter, space, data):
+        global hp2
+        ball_shape = arbiter.shapes[0]
+        armor_shape = arbiter.shapes[1]
+        space.remove(ball_shape, ball_shape.body)
+        hp2=hp2-10
+        print("hooray")
+        #print(arbiter.shapes)
+        #print( space.shape_query(armor_shape))
+        return True
+    def hitend_armor(arbiter, space, data):
+        player2_body.velocity=(0,0)
+        player2_body.angular_velocity = 0
+    h = space.add_collision_handler(
+        collision_types["ball"], 
+        collision_types["armor2"])
+    h.begin = hit_armor
+    h.separate = hitend_armor
+    def hit_player(arbiter, space, data):
+        ball_shape = arbiter.shapes[0]
+        space.remove(ball_shape, ball_shape.body)
+        return True
+    def hitend_armor(arbiter, space, data):
+        player2_body.velocity=(0,0)
+        player2_body.angular_velocity = 0
+    h = space.add_collision_handler(
+        collision_types["ball"], 
+        collision_types["player2"])
+    h.begin = hit_player
+    h.separate = hitend_armor
+
+    def player_collision(arbiter, space, data):
+        player1_body.velocity=(0,0)
+        player1_body.angular_velocity = 0
+        player2_body.velocity=(0,0)
+        player2_body.angular_velocity = 0
+        print("hit it")
+    h1 = space.add_collision_handler(
+        collision_types["player"], 
+        collision_types["player2"])
+    h2 = space.add_collision_handler(
+        collision_types["player"], 
+        collision_types["armor2"])
+    h3 = space.add_collision_handler(
+        collision_types["player2"], 
+        collision_types["armor2"])
+    h4 = space.add_collision_handler(
+        collision_types["armor1"], 
+        collision_types["armor2"])
+    h1.begin = player_collision
+    h1.separate = player_collision
+    h2.begin = player_collision
+    h2.separate = player_collision
+    h3.begin = player_collision
+    h3.separate = player_collision
+    h4.begin = player_collision
+    h4.separate = player_collision
+
+    def wall1_collision(arbiter, space, data):
+        player_body.velocity=(0,0)
+        player_body.angular_velocity = 0
+        print("hit the wall")
+    def wall2_collision(arbiter, space, data):
+        player2_body.velocity=(0,0)
+        player2_body.angular_velocity = 0
+        print("hit the wall")
+    h1 = space.add_collision_handler(
+        collision_types["player"], 
+        collision_types["brick"])
+    h2 = space.add_collision_handler(
+        collision_types["player2"], 
+        collision_types["brick"])
+    h3 = space.add_collision_handler(
+        collision_types["brick"], 
+        collision_types["armor2"])
+    h4 = space.add_collision_handler(
+        collision_types["armor1"], 
+        collision_types["brick"])
+    h1.separate = wall1_collision
+    h2.separate = wall2_collision
+    h3.separate = wall2_collision
+    h4.separate = wall1_collision
+
+
+
+
+
+
+
+
+
+
+
 
     while 1:
 
-        if ticks % render_rate == 0 and vis == 1:
-            local_vis = True
+        if ticks % render_rate == 0:
+            
             for event in pygame.event.get():
                 if event.type == QUIT:
                     sys.exit(0)
                 elif event.type == KEYDOWN and event.key == K_ESCAPE:
                     sys.exit(0)
-        else:
-            local_vis = False
+        
 
         ticks += 1
 
-        if local_vis == 1:
-            screen.blit(background.image, background.rect)
-            space.debug_draw(draw_options)
+        
+        
+        space.debug_draw(draw_options)
 
         space.step(1 / TIME_STEP)
 
         # Remove pocketed striker
 
-        for pocket in pockets:
-            if dist(pocket.body.position, striker[0].position) < POCKET_RADIUS - STRIKER_RADIUS + (STRIKER_RADIUS * 0.75):
-                foul = True
-                for shape in space._get_shapes():
-                    if shape.color == STRIKER_COLOR:
-                        space.remove(shape, shape.body)
-                        break
+        
         # Remove pocketed coins
 
-        for pocket in pockets:
-            for coin in space._get_shapes():
-                if dist(pocket.body.position, coin.body.position) < POCKET_RADIUS - COIN_RADIUS + (COIN_RADIUS * 0.75):
-                    if coin.color == BLACK_COIN_COLOR:
-                        score += 1
-                        pocketed.append((coin, coin.body))
-                        space.remove(coin, coin.body)
-                    if coin.color == WHITE_COIN_COLOR:
-                        score += 1
-                        pocketed.append((coin, coin.body))
-                        space.remove(coin, coin.body)
-                    if coin.color == RED_COIN_COLOR:
-                        pocketed.append((coin, coin.body))
-                        space.remove(coin, coin.body)
-                        queen_pocketed = True
+        
 
-        if local_vis == 1:
-            font = pygame.font.Font(None, 25)
-            text = font.render("Score: " +
-                               str(score), 1, (220, 220, 220))
-            screen.blit(text, (BOARD_SIZE / 2 - 40, 780, 0, 0))
+        
+        
 
-            text = font.render("Time Elapsed: " +
-                               str(round(time.time() - start_time, 2)), 1, (50, 50, 50))
-            screen.blit(text, (BOARD_SIZE / 3 + 57, 25, 0, 0))
+        
 
-            # First tick, draw an arrow representing action
+        pygame.display.flip()
+        if ticks == 1:
+            time.sleep(1)
 
-            if ticks == 1:
-                force = action[2]
-                angle = action[1]
-                position = action[0]
-                draw_arrow(screen, position, angle, force, player)
-
-            pygame.display.flip()
-            if ticks == 1:
-                time.sleep(1)
-
-            clock.tick()
+        clock.tick()
 
         # Do post processing and return the next State
         if is_ended(space) or ticks > TICKS_LIMIT:
-            state_new = {"Black_Locations": [],
+            '''state_new = {"Black_Locations": [],
                          "White_Locations": [], "Red_Location": [], "Score": 0}
 
             for coin in space._get_shapes():
@@ -219,77 +327,18 @@ def play(state, player, action):
                     print "Failed to clear queen, getting another turn"
 
             state_new["Score"] = score
-            print "Coins Remaining: ", len(state_new["Black_Locations"]), "B ", len(state_new["White_Locations"]), "W ", len(state_new["Red_Location"]), "R"
+            print "Coins Remaining: ", len(state_new["Black_Locations"]), "B ", len(state_new["White_Locations"]), "W ", len(state_new["Red_Location"]), "R"'''
             return state_new, queen_flag, score-prevscore
 
 
-# Validate parsed action
-
-def validate(action, state):
-    print "Server received action: ", action
-    position = action[0]
-    angle = action[1]
-    force = action[2]
-    if angle < -45 or angle > 225:
-        print "Invalid Angle, taking random angle",
-        angle = random.randrange(-45, 225)
-        print "which is ", angle
-    if position < 0 or position > 1:
-        print "Invalid position, taking random position"
-        position = random.random()
-    if force < 0 or force > 1:
-        print "Invalid force, taking random position"
-        force = random.random()
-
-    angle = angle + (random.choice([-1, 1]) * gauss(0, noise3))
-    if angle < -45:
-        angle = -45
-    if angle > 225:
-        angle = 225
-
-    if angle < 0:
-        angle = 360 + angle
-    angle = angle / 180.0 * pi
-    position = 170 + \
-        (float(max(min(position + gauss(0, noise1), 1), 0)) * (460))
-    force = MIN_FORCE + \
-        float(max(min(force + gauss(0, noise2), 1), 0)) * MAX_FORCE
-
-    tmp_state = state.copy()
-
-    try:
-        del tmp_state["Score"]
-    except KeyError:
-        pass
-    tmp_state = tmp_state.values()
-    tmp_state = reduce(lambda x, y: x + y, tmp_state)
-
-    check = 0
-    fuse = 10
-
-    while check == 0 and fuse > 0:
-        fuse -= 1
-        check = 1
-        for coin in tmp_state:
-            # print coin, dist((position, 145), coin)
-            if dist((position, 140), coin) < STRIKER_RADIUS + COIN_RADIUS:
-                check = 0
-                # print "Position ", (position, 145), " clashing with a coin,
-                # taking random"
-                position = random.randrange(170, 630)
-                # print "checking", position
-
-    # print "Final action", action
-    action = (position, angle, force)
-    return action
 
 # Generate logs
 
 
-def logger(log, msg):
+'''def logger(log, msg):
     f = open("logs/"+log, "a")
     f.write(msg)
-    f.close()
+    f.close()'''
 
 
 # The server receives an action from the agent
@@ -309,7 +358,7 @@ def send_state(state, conn1):
         conn1.send(state)
     except socket.error:
         print "Aborting, player did not respond within timeout"
-        logger(log, "Aborting, player did not respond within timeout\n")
+        #logger(log, "Aborting, player did not respond within timeout\n")
         sys.exit()
     return True
 
@@ -338,69 +387,33 @@ if __name__ == '__main__':
 
     it = 0
 
-    while it < 500:  # Number of chances given to the player
+    while it < 5000:  # Number of chances given to the player
         it += 1
         # print "Sending ", next_state
-        send_state(str(next_state) + ";REWARD" + str(reward), conn1)
+        send_state(str(next_state) + str(reward), conn1)
         s = request_action(conn1)
         if not s:  # response empty
             print "No response from player 1, aborting"
-            logger(log, "No response from player 1, aborting\n")
+            #logger(log, "No response from player 1, aborting\n")
             sys.exit()
         elif s == timeout_msg:
             print "Player 1 timeout, aborting"
-            logger(log, "Player 1 timeout, aborting\n")
+            #logger(log, "Player 1 timeout, aborting\n")
             sys.exit()
         else:
             action = tuplise(s.replace(" ", "").split(','))
 
-        next_state, queen_flag, reward = play(
-            next_state, 1, validate(action, next_state))
+        '''next_state, queen_flag, reward = play(
+            next_state, 1, validate(action, next_state))'''
+        # call play function here    
 
-        score1 += reward
-        print "turn: " + str(it) + " score: " + str(score1)
-        while queen_flag:  # Extra turn to cover queen
-            print "Pocketed Queen, pocket any coin in this turn to cover it"
-            it += 1
-
-            send_state(str(next_state) + ";REWARD" + str(reward), conn1)
-            s = request_action(conn1)
-            if not s:  # response empty
-                print "No response from player 1, aborting"
-                logger(log, "No response from player 1, aborting\n")
-                sys.exit()
-            elif s == timeout_msg:
-                print "Player 1 timeout, aborting"
-                logger(log, "Player 1 timeout, aborting\n")
-                sys.exit()
-            else:
-                action = tuplise(s.replace(" ", "").split(','))
-            next_state, queen_flag, reward = play(
-                next_state, 1, validate(action, next_state))
-            if reward > 0:
-                # print "Reward > 0, is the score updated?
-                # ",next_state["Score"]
-                next_state["Score"] += 3
-                reward += 3
-                # print "Reward > 0, is the score updated?
-                # ",next_state["Score"]
-                print "Successfully covered the queen"
-            else:
-                print "Could not cover the queen"
-                next_state["Red_Location"].append(ret_pos(next_state))
-            score1 += reward
-            print "Score: ", score1, " turns: " + str(it)
-        if len(next_state["Black_Locations"]) + len(next_state["White_Locations"]) + len(next_state["Red_Location"]) == 0:
-            print "Cleared Board in " + str(it) + " turns. Realtime taken: "+str(time.time(
-            ) - start_time)+" s @ "+str(round((it*1.0)/(time.time() - start_time), 2)) + " turns/s\n"
-            break
-
-    if it >= 500:
-        logger(log, "Player took more than 500 turns, aborting\n")
+        
+    if it >= 5000:
+        #logger(log, "Player took more than 500 turns, aborting\n")
         print "Player took more than 500 turns, aborting"
         sys.exit()
 
     tmp = "Cleared Board in " + str(it) + " turns. Realtime taken: "+str(time.time(
     ) - start_time)+" s @ "+str(round((it*1.0)/(time.time() - start_time), 2)) + " turns/s" +" with random seed " + str(args.rng) + "\n"
-    logger(log, tmp)
+    #logger(log, tmp)
     don(s1, conn1)

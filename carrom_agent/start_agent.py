@@ -1,6 +1,3 @@
-# A Sample Carrom Agent to get you started. The logic for parsing a state
-# is built in
-
 from thread import *
 import time
 import socket
@@ -13,9 +10,9 @@ import ast
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-np', '--num-players', dest="num_players", type=int,
+'''parser.add_argument('-np', '--num-players', dest="num_players", type=int,
                     default=1,
-                    help='1 Player or 2 Player')
+                    help='1 Player or 2 Player')'''
 parser.add_argument('-p', '--port', dest="port", type=int,
                     default=12121,
                     help='port')
@@ -76,30 +73,3 @@ def agent_1player(state):
     return flag
 
 
-def agent_2player(state, color):
-
-    flag = 1
-
-   
-    a = str(random.random()) + ',' + \
-        str(random.randrange(-45, 225)) + ',' + str(random.random())
-
-    try:
-        s.send(a)
-    except Exception as e:
-        print "Error in sending:",  a, " : ", e
-        print "Closing connection"
-        flag = 0
-
-    return flag
-
-
-while 1:
-    state = s.recv(1024)  # Receive state from server
-    if num_players == 1:
-        if agent_1player(state) == 0:
-            break
-    elif num_players == 2:
-        if agent_2player(state, color) == 0:
-            break
-s.close()
