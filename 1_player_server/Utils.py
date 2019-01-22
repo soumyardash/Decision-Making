@@ -16,14 +16,15 @@ import copy
 
 
 # Global Variables
-
+TICKS_LIMIT = 3000
 f=0.14
 y_outer=5000*f
 x_outer=8000*f
 width = int(round(x_outer))
 height = int(round(y_outer))
-hp1=100
-hp2=100
+hp1=2000
+hp2=2000
+projectiles = list()
 
 f2 = 0.125 # factor to multiply by all dimensions given in rules manual
 x1 = (x_outer-8000*f2)/2# bottom left
@@ -58,32 +59,16 @@ def spawn_ball(space, position, direction):
     #Keep ball velocity at a static value
     def constant_velocity(body, gravity, damping, dt):
         body.velocity = body.velocity.normalized() * 400
-    ball_body.velocity_func = constant_velocity 
-    
+    ball_body.velocity_func = constant_velocity     
     space.add(ball_body, ball_shape)
-
-
+    projectiles.append(ball_body)
 
 TIME_STEP = 60.0  # Step size for pymunk
 TICKS_LIMIT = 3000  # Max ticks to consider
 
-
-
-
-
-
-
-
-
-
-
-#  Given a state, return next free coin position
-
-
-
 # Initialize space
-
 def setup_level(space):
+    obstacles = []
     #obstacle 1
     o1x =  x3 +1700*f2
     o1y =  y3 - 1125*f2 
@@ -93,9 +78,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
     #obstacle 2
     o2x= 1525*f2 + x1
     o2y=y1+ 1875*f2
@@ -105,9 +90,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
     #obstacle 3
     o3x= x1 + 3375*f2
     o3y= 500*f2 + y1
@@ -117,9 +102,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
     #obstacle 4
     o4x =  x1 +4000*f2
     o4y =  y1 + 2500*f2
@@ -129,10 +114,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
-
+    obstacles.append(brick_shape)
     #obstacle 5
     o5x= x4 - 3375*f2
     o5y= y3 - 500*f2
@@ -142,9 +126,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
     #obstacle 6
     o6x= x4 - 1525*f2
     o6y= y3 - 1900*f2
@@ -154,9 +138,9 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
     #obstacle 7
     o7x =  x2 - 1700*f2
     o7y =  y1 + 1125*f2
@@ -166,99 +150,52 @@ def setup_level(space):
     brick_shape.elasticity = 0.0
     brick_shape.friction = 10000.0
     brick_shape.color = THECOLORS['blue']
-#    brick_shape.group = 1
     brick_shape.collision_type = collision_types["brick"]
     space.add(brick_body, brick_shape)
-
-
+    obstacles.append(brick_shape)
     ### Game area
-    
-    static_lines = [pymunk.Segment(space.static_body, (x1,y1), (x2,y2), 2)
-                ,pymunk.Segment(space.static_body, (x2, y2), (x4, y4), 2)
-                ,pymunk.Segment(space.static_body, (x1,y1), (x3, y3), 2),
-                pymunk.Segment(space.static_body, (x3, y3), (x4, y4), 2)
-                ]  
-               
+    static_lines = [pymunk.Segment(space.static_body, (x1,y1), (x2,y2), 2), pymunk.Segment(space.static_body, (x2, y2), (x4, y4), 2),
+                    pymunk.Segment(space.static_body, (x1,y1), (x3, y3), 2), pymunk.Segment(space.static_body, (x3, y3), (x4, y4), 2)]  
     for line in static_lines:
         line.color = THECOLORS['black']
         line.elasticity = 0.0
         line.friction = 10000.0
         line.collision_type = collision_types["brick"]
-    
     space.add(static_lines)
-    
-    
-
+    obstacles.extend(static_lines)           
     refill_lines = [pymunk.Segment(space.static_body,(x1+3500*f2,y1),(x1+4500*f2,y1),2),
     pymunk.Segment(space.static_body,(x1+3500*f2,y1),(x1+3500*f2,y1+1000*f2),2),
     pymunk.Segment(space.static_body,(x1+3500*f2,y1+1000*f2),(x1+4500*f2,y1+1000*f2),2),
-    pymunk.Segment(space.static_body,(x1+4500*f2,y1),(x1+4500*f2,y1+1000*f2),2)
-
-    ]
-
+    pymunk.Segment(space.static_body,(x1+4500*f2,y1),(x1+4500*f2,y1+1000*f2),2)]
     for line in refill_lines:
         line.color = THECOLORS['black']
         line.sensor = True
-
     space.add(refill_lines)
-
     refill_lines2 = [pymunk.Segment(space.static_body,(x1+3500*f2,y3),(x1+4500*f2,y3),2),
     pymunk.Segment(space.static_body,(x1+3500*f2,y3-1000*f2),(x1+3500*f2,y3),2),
     pymunk.Segment(space.static_body,(x1+3500*f2,y3-1000*f2),(x1+4500*f2,y3-1000*f2),2),
-    pymunk.Segment(space.static_body,(x1+4500*f2,y3),(x1+4500*f2,y3-1000*f2),2)
-
-    ]
-
+    pymunk.Segment(space.static_body,(x1+4500*f2,y3),(x1+4500*f2,y3-1000*f2),2)]
     for line in refill_lines2:
         line.color = THECOLORS['black']
         line.sensor = True
-
     space.add(refill_lines2)
-
-
     bonus_lines1 = [pymunk.Segment(space.static_body,(x1+1200*f2,y3-1250*f2),(x1+2200*f2,y3-1250*f2),2),
     pymunk.Segment(space.static_body,(x1+1200*f2,y3-1250*f2),(x1+1200*f2,y3-2250*f2),2),
     pymunk.Segment(space.static_body,(x1+1200*f2,y3-2250*f2),(x1+2200*f2,y3-2250*f2),2),
-    pymunk.Segment(space.static_body,(x1+2200*f2,y3-1250*f2),(x1+2200*f2,y3-2250*f2),2)
-
-    ]
-
+    pymunk.Segment(space.static_body,(x1+2200*f2,y3-1250*f2),(x1+2200*f2,y3-2250*f2),2)]
     for line in bonus_lines1:
         line.color = THECOLORS['black']
         line.sensor = True
-
     space.add(bonus_lines1)
-
     bonus_lines2 = [pymunk.Segment(space.static_body,(x2-1200*f2,y2+2250*f2),(x2-2200*f2,y2+2250*f2),2),
-    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
-    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
-    pymunk.Segment(space.static_body,(x2-1200*f2,y2+1250*f2),(x2-1200*f2,y2+2250*f2),2)
-
-    ]
-
+                    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
+                    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
+                    pymunk.Segment(space.static_body,(x2-1200*f2,y2+1250*f2),(x2-1200*f2,y2+2250*f2),2)]
     for line in bonus_lines2:
         line.color = THECOLORS['black']
         line.sensor = True
-
     space.add(bonus_lines2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return obstacles
 
 def don(s1, conn1):
     s1.close()
@@ -266,18 +203,13 @@ def don(s1, conn1):
     sys.exit()
 
 # Parse the received action
-
-
 def tuplise(s):
     return (round(float(s[0]), 4), round(float(s[1]), 4), round(float(s[2]), 4))
 
-
-
-
-'''class BACKGROUND(pygame.sprite.Sprite):
+class BACKGROUND(pygame.sprite.Sprite):
 
     def __init__(self, image_file, location):
         pygame.sprite.Sprite.__init__(self)  # call Sprite initializer
         self.image = pygame.image.load(image_file)
         self.rect = self.image.get_rect()
-        self.rect.left, self.rect.top = location'''
+        self.rect.left, self.rect.top = location
