@@ -202,6 +202,27 @@ def don(s1, conn1):
     conn1.close()
     sys.exit()
 
+#Implementation of line of sight
+def queryinfo():
+    p1=player_body.position
+    p2=player2_body.position
+    pt1=p1
+    pt2=p2
+    r0=350*f2
+    theta=math.atan((p2[1]-p1[1])/(p2[0]-p1[0]))
+    pt1[0]=p1[0]+r0*math.cos(theta)
+    pt1[1]=p1[1]+r0*math.sin(theta)
+    pt2[0]=p2[0]+r0*math.cos(theta)
+    pt2[0]=p2[0]+r0*math.sin(theta)
+    query = space.segment_query_first(pt1,pt2,1,pymunk.ShapeFilter())
+    if query:
+        print("my sight is blocked")
+    #c_p=query.point
+    #line=pymunk.Segment(space.static_body,player_body.position,player2_body.position,1)
+    #line.sensor=True
+    #line.body.position=player_body.position
+    #space.add(line)
+
 # Parse the received action
 def tuplise(s):
     return (round(float(s[0]), 4), round(float(s[1]), 4), round(float(s[2]), 4))
