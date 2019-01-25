@@ -46,7 +46,9 @@ collision_types = {
     "armor2": 6
 }
 
-def spawn_ball(space, position, direction):
+#TODO Make a function to translate and rotate the bot from a start_pos and start_orientation to a final_post and final_orientation
+
+def spawn_ball(space, position, direction): #TODO Make this function accept a speed of launch
     ball_body = pymunk.Body(1, pymunk.inf)
     ball_body.position = position
     

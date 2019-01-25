@@ -1,4 +1,4 @@
-# Utility functions for the carrom server
+# Utility functions for the game server
 
 from pygame.locals import *
 from pygame.color import *
@@ -16,276 +16,216 @@ import copy
 
 
 # Global Variables
+TICKS_LIMIT = 3000
+f=0.14
+y_outer=5000*f
+x_outer=8000*f
+width = int(round(x_outer))
+height = int(round(y_outer))
+hp1=2000
+hp2=2000
+projectiles = list()
 
+f2 = 0.125 # factor to multiply by all dimensions given in rules manual
+x1 = (x_outer-8000*f2)/2# bottom left
+y1 = (y_outer-5000*f2)/2
+x2 = x1+8000*f2 #bottom right
+y2 = y1
+x3 = x1 #top left
+y3 = y1+5000*f2
+x4 = x2 #top right
+y4 = y3
 
-STATIC = 1  # Velocity below which an object is considered to be static
-MIN_FORCE = 500  # Min Force to hit the striker
-MAX_FORCE = 34000  # Max force to hit the striker
-TIME_STEP = 20.0  # Step size for pymunk
+collision_types = {
+    "ball": 1,
+    "brick": 2,
+#    "bottom": 3,
+    "player": 3,
+    "player2": 4,
+    "armor1": 5,
+    "armor2": 6
+}
+
+def spawn_ball(space, position, direction):
+    ball_body = pymunk.Body(1, pymunk.inf)
+    ball_body.position = position
+    
+    ball_shape = pymunk.Circle(ball_body, 8.5*f2)
+    ball_shape.color =  THECOLORS["black"]
+    ball_shape.elasticity = 1.0
+    ball_shape.collision_type = collision_types["ball"]
+    ball_body.apply_impulse_at_local_point(Vec2d(direction))
+    
+    #Keep ball velocity at a static value
+    def constant_velocity(body, gravity, damping, dt):
+        body.velocity = body.velocity.normalized() * 400
+    ball_body.velocity_func = constant_velocity     
+    space.add(ball_body, ball_shape)
+    projectiles.append(ball_body)
+
+TIME_STEP = 60.0  # Step size for pymunk
 TICKS_LIMIT = 3000  # Max ticks to consider
 
-
-BOARD_SIZE = 800
-BOARD_DAMPING = 0.95  # Velocity fall per second
-
-BOARD_WALLS_SIZE = BOARD_SIZE * 2 / 75
-WALLS_ELASTICITY = 0.7
-
-COIN_MASS = 1
-COIN_RADIUS = 15.01
-COIN_ELASTICITY = 0.5
-
-STRIKER_MASS = 2.8
-STRIKER_RADIUS = 20.6
-STRIKER_ELASTICITY = 0.7
-
-POCKET_RADIUS = 22.51
-
-STRIKER_COLOR = [65, 125, 212]
-POCKET_COLOR = [0, 0, 0]
-BLACK_COIN_COLOR = [43, 43, 43]
-WHITE_COIN_COLOR = [169, 121, 47]
-RED_COIN_COLOR = [169, 53, 53]
-BOARD_WALLS_COLOR = [56, 32, 12]
-BOARD_COLOR = [242, 209, 158]
-
-
-# Array of initial coin positions
-INITIAL = [(399, 368), (437, 420), (372, 424), (336, 366), (400, 332), (463, 367), (464, 434), (400, 468), (337, 433), (400, 400), (401, 432), (363, 380), (428, 376),  (370, 350), (430, 346),
-           (470, 400), (430, 450), (370, 454), (330, 400)]
-
-INITIAL_STATE = {'White_Locations': [(399, 368), (437, 420), (372, 424), (336, 366), (400, 332),
-                                     (463, 367), (464, 434), (400, 468), (337, 433)],
-                 'Red_Location': [(400, 400)],
-                 'Score': 0,
-                 'Black_Locations': [(401, 432), (363, 380), (428, 376),  (370, 350), (430, 346),
-                                     (470, 400), (430, 450), (370, 454), (330, 400)]}
-
-# Eucilidean Distance between two points
-
-
-def dist(p1, p2):
-    return sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
-
-#  Given a state, return next free coin position
-
-
-def ret_pos(state):
-    s = state.copy()
-    try:
-        del s["Score"]
-    except KeyError:
-        pass
-    x = s.values()
-    x = reduce(lambda x, y: x + y, x)
-    for i in INITIAL:
-        free = 1
-        for shape in x:
-            if dist(shape, i) < 2 * COIN_RADIUS:
-                free = 0
-        if free == 1:
-            return i
-
-    return INITIAL[0]
-
 # Initialize space
-
-
-def init_space(space):
-    space.damping = BOARD_DAMPING
-    space.threads = 2
-
-# Initialize walls
-
-
-def init_walls(space):  # Initializes the four outer walls of the board
-    body = pymunk.Body(body_type=pymunk.Body.STATIC)
-    walls = [pymunk.Segment(body, (0, 0), (0, BOARD_SIZE), BOARD_WALLS_SIZE),
-             pymunk.Segment(body, (0, 0), (BOARD_SIZE, 0), BOARD_WALLS_SIZE),
-             pymunk.Segment(
-                 body, (BOARD_SIZE, BOARD_SIZE), (BOARD_SIZE, 0), BOARD_WALLS_SIZE),
-             pymunk.Segment(
-                 body, (BOARD_SIZE, BOARD_SIZE), (0, BOARD_SIZE), BOARD_WALLS_SIZE)
-             ]
-    for wall in walls:
-        wall.color = BOARD_WALLS_COLOR
-        wall.elasticity = WALLS_ELASTICITY
-    space.add(walls)
-
-# Initialize pockets
-
-
-def init_pockets(space):
-    pockets = []
-    for i in [(44.1, 43.1), (756.5, 43), (756.5, 756.5), (44, 756.5)]:
-        inertia = pymunk.moment_for_circle(0.1, 0, POCKET_RADIUS, (0, 0))
-        body = pymunk.Body(0.1, inertia)
-        body.position = i
-        shape = pymunk.Circle(body, POCKET_RADIUS, (0, 0))
-        shape.color = POCKET_COLOR
-        shape.collision_type = 2
-        shape.filter = pymunk.ShapeFilter(categories=0b1000)
-        space.add(body, shape)
-        pockets.append(shape)
-        del body
-        del shape
-    return pockets
-
-# Initialize striker with force
-
-
-def init_striker(space, passthrough, action, player):
-
-    inertia = pymunk.moment_for_circle(STRIKER_MASS, 0, STRIKER_RADIUS, (0, 0))
-    body = pymunk.Body(STRIKER_MASS, inertia)
-
-    if player == 1:
-        body.position = (action[0], 140)
-    if player == 2:
-        body.position = (action[0], BOARD_SIZE - 140)
-    # print " Final Position: ", body.position
-    # body.position=(100,)
-    body.apply_force_at_world_point((cos(action[1]) * action[2], sin(
-        action[1]) * action[2]), body.position + (STRIKER_RADIUS * 0, STRIKER_RADIUS * 0))
-
-    shape = pymunk.Circle(body, STRIKER_RADIUS, (0, 0))
-    shape.elasticity = STRIKER_ELASTICITY
-    shape.color = STRIKER_COLOR
-
-    mask = pymunk.ShapeFilter.ALL_MASKS ^ passthrough.filter.categories
-
-    sf = pymunk.ShapeFilter(mask=mask)
-    shape.filter = sf
-    shape.collision_type = 2
-
-    space.add(body, shape)
-    return [body, shape]
-
-# Adds coins to the board at the given coordinates
-
-
-def init_coins(space, coords_black, coords_white, coord_red, passthrough):
-
-    coins = []
-    inertia = pymunk.moment_for_circle(COIN_MASS, 0, COIN_RADIUS, (0, 0))
-    for coord in coords_black:
-        body = pymunk.Body(COIN_MASS, inertia)
-        body.position = coord
-        shape = pymunk.Circle(body, COIN_RADIUS, (0, 0))
-        shape.elasticity = COIN_ELASTICITY
-        shape.color = BLACK_COIN_COLOR
-
-        mask = pymunk.ShapeFilter.ALL_MASKS ^ passthrough.filter.categories
-
-        sf = pymunk.ShapeFilter(mask=mask)
-        shape.filter = sf
-        shape.collision_type = 2
-
-        space.add(body, shape)
-        coins.append(shape)
-        del body
-        del shape
-
-    for coord in coords_white:
-        body = pymunk.Body(COIN_MASS, inertia)
-        body.position = coord
-        shape = pymunk.Circle(body, COIN_RADIUS, (0, 0))
-        shape.elasticity = COIN_ELASTICITY
-        shape.color = WHITE_COIN_COLOR
-
-        mask = pymunk.ShapeFilter.ALL_MASKS ^ passthrough.filter.categories
-
-        sf = pymunk.ShapeFilter(mask=mask)
-        shape.filter = sf
-        shape.collision_type = 2
-
-        space.add(body, shape)
-        coins.append(shape)
-        del body
-        del shape
-
-    for coord in coord_red:
-        body = pymunk.Body(COIN_MASS, inertia)
-        body.position = coord
-        shape = pymunk.Circle(body, COIN_RADIUS, (0, 0))
-        shape.elasticity = COIN_ELASTICITY
-        shape.color = RED_COIN_COLOR
-        mask = pymunk.ShapeFilter.ALL_MASKS ^ passthrough.filter.categories
-
-        sf = pymunk.ShapeFilter(mask=mask)
-        shape.filter = sf
-        shape.collision_type = 2
-
-        space.add(body, shape)
-        coins.append(shape)
-        del body
-        del shape
-    return coins
-
- # Returns true is the speed of all objects on the board < STATIC
-
-
-def is_ended(space):
-    for shape in space._get_shapes():
-        if abs(shape.body.velocity[0]) > STATIC or abs(shape.body.velocity[1]) > STATIC:
-            return False
-    return True
-
-# Mirrors the state for P2
-
-
-def transform_state(state):
-    t_state = {}
-    t_state["White_Locations"] = []
-    t_state["Black_Locations"] = []
-    t_state["Red_Location"] = []
-    t_state["Score"] = state["Score"]
-    for pos in state["White_Locations"]:
-        t_state["White_Locations"].append((pos[0], 800 - pos[1]))
-    for pos in state["Black_Locations"]:
-        t_state["Black_Locations"].append((pos[0], 800 - pos[1]))
-    for pos in state["Red_Location"]:
-        t_state["Red_Location"].append((pos[0], 800 - pos[1]))
-    return t_state
-
-
-# Mirrors action for P2
-
-def transform_action(action):
-    return (action[0], 360 - action[1], action[2])
-
-
-# A helpful visualization for the action
-def draw_arrow(screen, position, angle, force, player):
-    length = STRIKER_RADIUS + force / 500.0
-    startpos_x = position
-    if player == 2:
-        startpos_y = 140
-    else:
-        startpos_y = BOARD_SIZE - 140
-    endpos_x = (startpos_x + cos(angle) * length)
-    endpos_y = (startpos_y - (length) * sin(angle))
-    pygame.draw.line(
-        screen, (50, 255, 50), (endpos_x, endpos_y), (startpos_x, startpos_y), 3)
-    pygame.draw.circle(screen, (50, 255, 50),
-                       (int(endpos_x), int(endpos_y)), 5)
-
-# Everything done
-
+def setup_level(space):
+    obstacles = []
+    #obstacle 1
+    o1x =  x3 +1700*f2
+    o1y =  y3 - 1125*f2 
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o1x, o1y
+    brick_shape = pymunk.Poly.create_box(brick_body, (1000*f2,250*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 2
+    o2x= 1525*f2 + x1
+    o2y=y1+ 1875*f2
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o2x, o2y
+    brick_shape = pymunk.Poly.create_box(brick_body, (250*f2,1000*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 3
+    o3x= x1 + 3375*f2
+    o3y= 500*f2 + y1
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o3x, o3y
+    brick_shape = pymunk.Poly.create_box(brick_body, (250*f2,1000*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 4
+    o4x =  x1 +4000*f2
+    o4y =  y1 + 2500*f2
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o4x, o4y
+    brick_shape = pymunk.Poly.create_box(brick_body, (1000*f2,250*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 5
+    o5x= x4 - 3375*f2
+    o5y= y3 - 500*f2
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o5x, o5y
+    brick_shape = pymunk.Poly.create_box(brick_body, (250*f2,1000*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 6
+    o6x= x4 - 1525*f2
+    o6y= y3 - 1900*f2
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o6x, o6y
+    brick_shape = pymunk.Poly.create_box(brick_body, (250*f2,1000*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    #obstacle 7
+    o7x =  x2 - 1700*f2
+    o7y =  y1 + 1125*f2
+    brick_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    brick_body.position = o7x, o7y
+    brick_shape = pymunk.Poly.create_box(brick_body, (1000*f2,250*f2))
+    brick_shape.elasticity = 0.0
+    brick_shape.friction = 10000.0
+    brick_shape.color = THECOLORS['blue']
+    brick_shape.collision_type = collision_types["brick"]
+    space.add(brick_body, brick_shape)
+    obstacles.append(brick_shape)
+    ### Game area
+    static_lines = [pymunk.Segment(space.static_body, (x1,y1), (x2,y2), 2), pymunk.Segment(space.static_body, (x2, y2), (x4, y4), 2),
+                    pymunk.Segment(space.static_body, (x1,y1), (x3, y3), 2), pymunk.Segment(space.static_body, (x3, y3), (x4, y4), 2)]  
+    for line in static_lines:
+        line.color = THECOLORS['black']
+        line.elasticity = 0.0
+        line.friction = 10000.0
+        line.collision_type = collision_types["brick"]
+    space.add(static_lines)
+    obstacles.extend(static_lines)           
+    refill_lines = [pymunk.Segment(space.static_body,(x1+3500*f2,y1),(x1+4500*f2,y1),2),
+    pymunk.Segment(space.static_body,(x1+3500*f2,y1),(x1+3500*f2,y1+1000*f2),2),
+    pymunk.Segment(space.static_body,(x1+3500*f2,y1+1000*f2),(x1+4500*f2,y1+1000*f2),2),
+    pymunk.Segment(space.static_body,(x1+4500*f2,y1),(x1+4500*f2,y1+1000*f2),2)]
+    for line in refill_lines:
+        line.color = THECOLORS['black']
+        line.sensor = True
+    space.add(refill_lines)
+    refill_lines2 = [pymunk.Segment(space.static_body,(x1+3500*f2,y3),(x1+4500*f2,y3),2),
+    pymunk.Segment(space.static_body,(x1+3500*f2,y3-1000*f2),(x1+3500*f2,y3),2),
+    pymunk.Segment(space.static_body,(x1+3500*f2,y3-1000*f2),(x1+4500*f2,y3-1000*f2),2),
+    pymunk.Segment(space.static_body,(x1+4500*f2,y3),(x1+4500*f2,y3-1000*f2),2)]
+    for line in refill_lines2:
+        line.color = THECOLORS['black']
+        line.sensor = True
+    space.add(refill_lines2)
+    bonus_lines1 = [pymunk.Segment(space.static_body,(x1+1200*f2,y3-1250*f2),(x1+2200*f2,y3-1250*f2),2),
+    pymunk.Segment(space.static_body,(x1+1200*f2,y3-1250*f2),(x1+1200*f2,y3-2250*f2),2),
+    pymunk.Segment(space.static_body,(x1+1200*f2,y3-2250*f2),(x1+2200*f2,y3-2250*f2),2),
+    pymunk.Segment(space.static_body,(x1+2200*f2,y3-1250*f2),(x1+2200*f2,y3-2250*f2),2)]
+    for line in bonus_lines1:
+        line.color = THECOLORS['black']
+        line.sensor = True
+    space.add(bonus_lines1)
+    bonus_lines2 = [pymunk.Segment(space.static_body,(x2-1200*f2,y2+2250*f2),(x2-2200*f2,y2+2250*f2),2),
+                    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
+                    pymunk.Segment(space.static_body,(x2-2200*f2,y2+2250*f2),(x2-2200*f2,y2+1250*f2),2),
+                    pymunk.Segment(space.static_body,(x2-1200*f2,y2+1250*f2),(x2-1200*f2,y2+2250*f2),2)]
+    for line in bonus_lines2:
+        line.color = THECOLORS['black']
+        line.sensor = True
+    space.add(bonus_lines2)
+    return obstacles
 
 def don(s1, conn1):
     s1.close()
     conn1.close()
     sys.exit()
 
+#Implementation of line of sight
+def queryinfo():
+    p1=player_body.position
+    p2=player2_body.position
+    pt1=p1
+    pt2=p2
+    r0=350*f2
+    theta=math.atan((p2[1]-p1[1])/(p2[0]-p1[0]))
+    pt1[0]=p1[0]+r0*math.cos(theta)
+    pt1[1]=p1[1]+r0*math.sin(theta)
+    pt2[0]=p2[0]+r0*math.cos(theta)
+    pt2[0]=p2[0]+r0*math.sin(theta)
+    query = space.segment_query_first(pt1,pt2,1,pymunk.ShapeFilter())
+    if query:
+        print("my sight is blocked")
+    #c_p=query.point
+    #line=pymunk.Segment(space.static_body,player_body.position,player2_body.position,1)
+    #line.sensor=True
+    #line.body.position=player_body.position
+    #space.add(line)
+
 # Parse the received action
-
-
 def tuplise(s):
     return (round(float(s[0]), 4), round(float(s[1]), 4), round(float(s[2]), 4))
-
-# Board background class
-
 
 class BACKGROUND(pygame.sprite.Sprite):
 

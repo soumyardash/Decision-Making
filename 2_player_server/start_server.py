@@ -68,14 +68,169 @@ timeout_period = 0.5
 
 ##########################################################################
 
-# play one step of carrom
-# Input: state, player, action
-# Output: next_state, queen_flag, reward
-# queen_flag denotes that the queen is pocketed and must be covered in the
-# next turn
-
-
 def play(state, player, action):
+    pygame.init()
+    clock = pygame.time.Clock()
+    if vis == 1:
+        screen = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
+        pygame.display.set_caption("Carrom RL Simulation")
+    space = pymunk.Space(threaded=True)
+
+    if player==1:
+        score1 = state["score1"]
+        prevscore1 = state["score1"]
+        HP1 = state["HP1"]
+        defense1 = state["defense1"]
+    if player==2:
+        score2 = state["score2"]
+        prevscore2 = state["score2"]
+        HP2 = state["HP2"]
+        defense2 = state["defense2"]
+    
+
+    #score1 = state["score1"]
+    #prevscore1 = state["score1"]
+    #score2 = state["score2"]
+    #prevscore2 = state["score2"]
+    #HP1 = state["HP1"]
+    #HP2 = state["HP2"]
+    #defense1 = state["defense1"]
+    #defense2 = state["defense2"]
+    # Setup arena
+    obstacles = setup_level(space)
+    # player 1
+    player1_armors = []
+    player1_body = pymunk.Body(500,pymunk.inf)
+    player1_body.position = 300, 100
+    player1_shape = pymunk.Circle(player1_body, (300*f2))
+    player1_shape.elasticity = 0
+    player1_shape.friction = 1.0
+    player1_shape.color = THECOLORS['red']
+    player1_shape.collision_type = collision_types["player"]
+    armor = pymunk.Segment(player1_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor1"]
+    player1_armors.append(armor)
+    armor = pymunk.Segment(player1_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor1"]
+    player1_armors.append(armor)
+    armor = pymunk.Segment(player1_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor1"]
+    player1_armors.append(armor)
+    armor = pymunk.Segment(player1_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor1"]
+    player1_armors.append(armor)
+    anglen=armor._get_normal
+    angle=0
+    player1_shape7 = pymunk.Segment(player1_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+    player1_shape7.color = THECOLORS['blue']
+    space.add(player1_body, player1_shape)
+    #player 2
+    player2_armors = []
+    player2_body = pymunk.Body(500,pymunk.inf)
+    player2_body.position = 500, 600
+    player2_shape = pymunk.Circle(player2_body, (300*f2))
+    player2_shape.elasticity = 0
+    player2_shape.friction = 1.0
+    player2_shape.color = THECOLORS['red']
+    player2_shape.collision_type = collision_types["player2"]
+    armor = pymunk.Segment(player2_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor2"]
+    player2_armors.append(armor)
+    armor = pymunk.Segment(player2_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor2"]
+    player2_armors.append(armor)
+    armor = pymunk.Segment(player2_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor2"]
+    player2_armors.append(armor)
+    armor = pymunk.Segment(player2_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+    armor.color=THECOLORS['black']
+    armor.collision_type = collision_types["armor2"]
+    player2_armors.append(armor)
+    angle=0
+    player2_shape7 = pymunk.Segment(player2_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+    player2_shape7.color = THECOLORS['blue']
+    space.add(player2_body, player2_shape)
+    if vis == 1:
+        draw_options = pymunk.pygame_util.DrawOptions(screen)
+    ticks = 0
+    while 1:
+        i0f ticks % render_rate == 0:
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    sys.exit(0)
+                elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                    sys.exit(0)
+        ticks += 1
+        space.step(1 / TIME_STEP)
+        # Remove projectiles collided with obstacle
+        for projectile in projectiles:
+            for obstacle in obstacles
+            if dist(projectile.body.position, obstacle.body.position) < 1:
+                space.remove(projectile, projectile.body)
+                break
+        # Remove projectiles collided with armor module
+        for projectile in projectiles:
+            for armor in player1_armors:
+                if dist(projectile.body.position, armor.body.position) < 1:
+	            if defense1 == 1: #Within 30s of defense zone
+                        HP1 -= 25
+                        score2 += 25
+                    else: 
+                        HP1 -= 50
+                        score2 += 50
+                    space.remove(projectile, projectile.body)
+                    break
+            for armor in player2_armors:
+                if dist(projectile.body.position, armor.body.position) < 1:
+	            if defense2 == 1: #Within 30s of defense zone
+                        HP2 -= 25
+                        score1 += 25
+                    else:
+                        HP2 -= 50
+                        score1 += 50
+                    space.remove(projectile, projectile.body)
+                    break
+            
+
+        if local_vis == 1:
+            font = pygame.font.Font(None, 25)
+            text = font.render("Score 1: " +
+                               str(score1), 1, (220, 220, 220))
+            screen.blit(text, (8000 * 0.14 / 2 - 40, 780, 0, 0))
+
+            text = font.render("Time Elapsed: " +
+                               str(round(time.time() - start_time, 2)), 1, (50, 50, 50))
+            screen.blit(text, (8000 * 0.14 / 3 + 57, 25, 0, 0))
+
+            # First tick, draw an arrow representing action
+
+            if ticks == 1:
+                force = action[2]
+                angle = action[1]
+                position = action[0]
+                draw_arrow(screen, position, angle, force, player)
+
+            pygame.display.flip()
+            if ticks == 1:
+                time.sleep(1)
+
+            clock.tick()
+
+        # Do post processing and return the next State
+        if HP1 == 0 or HP2 == 0 or ticks > TICKS_LIMIT:
+            state_new = {"score1": 0, "score2": 0, "HP1": 0, "HP2": 0, "defense1": 0, "defense2": 0}
+            state_new["position1"] = player1_body.body_position
+            state_new["position2"] = player2_body.body_position
+            return state_new, score1-prevscore1, score2-prevscore2
+
+'''def play(state, player, action):
     pygame.init()
     clock = pygame.time.Clock()
 
@@ -236,7 +391,7 @@ def play(state, player, action):
             state_new["Score"] = score
             print "Coins Remaining: ", len(state_new["Black_Locations"]), "B ", len(state_new["White_Locations"]), "W ", len(state_new["Red_Location"]), "R"
             return state_new, queen_flag, score-prevscore
-
+'''
 
 def validate(action, player, state):
     # print "Action Received", action
