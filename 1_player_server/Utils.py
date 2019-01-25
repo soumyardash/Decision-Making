@@ -48,7 +48,7 @@ collision_types = {
 
 #TODO Make a function to translate and rotate the bot from a start_pos and start_orientation to a final_post and final_orientation
 
-def spawn_ball(space, position, direction): #TODO Make this function accept a speed of launch
+def spawn_ball(space, position, direction, speed): #TODO Make this function accept a speed of launch
     ball_body = pymunk.Body(1, pymunk.inf)
     ball_body.position = position
     
@@ -60,7 +60,7 @@ def spawn_ball(space, position, direction): #TODO Make this function accept a sp
     
     #Keep ball velocity at a static value
     def constant_velocity(body, gravity, damping, dt):
-        body.velocity = body.velocity.normalized() * 400
+        body.velocity = body.velocity.normalized() * speed
     ball_body.velocity_func = constant_velocity     
     space.add(ball_body, ball_shape)
     projectiles.append(ball_body)
