@@ -43,14 +43,12 @@ def play(state, player, action):
         screen = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
         pygame.display.set_caption("Carrom RL Simulation")
     space = pymunk.Space(threaded=True)
-    score1 = state["score1"]
-    prevscore1 = state["score1"]
-    score2 = state["score2"]
-    prevscore2 = state["score2"]
-    HP1 = state["HP1"]
-    HP2 = state["HP2"]
-    defense1 = state["defense1"]
-    defense2 = state["defense2"]
+    location_self = state["location_self"]
+    location_op = state["location_op"]
+    HP_self = state["HP"]
+    defense = state["defense"]
+    barrel_heat = state["barrel_heat"]
+    projectiles_left = state["projectiles_left"]
     # Setup arena
     obstacles = setup_level(space)
     # player 1
@@ -112,6 +110,23 @@ def play(state, player, action):
     player2_shape7 = pymunk.Segment(player2_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
     player2_shape7.color = THECOLORS['blue']
     space.add(player2_body, player2_shape)
+
+    # 1 - Shoot action = {action_type, yaw, speed}
+    # 2 - Chase action = {action_type, position, orientation} Cover even rotating in a given position in order to be able to shoot
+    # 3 - Refill action = {action_type, position, orientation} Position of the refill zone and the best orientation of the robot
+    # 4 - Defense action = {action_type, position, orientation} Position of the defense zone and the best orientaton of the robot
+    # 5 - Escape action = {action_type, position, orientation} Position and orientation of the robot in the best escape spot
+    if action[0] == 1: #Shoot
+        spawn_ball(space, player1_body.position, action[1])
+    elif action[0] == 2: #Chase
+        #TODO
+    elif action[0] == 3: #Refill
+        #TODO
+    elif action[0] == 4: #Defense
+        #TODO
+    elif action[0] == 5: #Escape
+        #TODO
+
     if vis == 1:
         draw_options = pymunk.pygame_util.DrawOptions(screen)
     ticks = 0
@@ -134,25 +149,13 @@ def play(state, player, action):
         for projectile in projectiles:
             for armor in player1_armors:
                 if dist(projectile.body.position, armor.body.position) < 1:
-	            if defense1 == 1: #Within 30s of defense zone
-                        HP1 -= 25
-                        score2 += 25
-                    else: 
-                        HP1 -= 50
-                        score2 += 50
-                    space.remove(projectile, projectile.body)
-                    break
-            for armor in player2_armors:
-                if dist(projectile.body.position, armor.body.position) < 1:
-	            if defense2 == 1: #Within 30s of defense zone
-                        HP2 -= 25
-                        score1 += 25
-                    else:
-                        HP2 -= 50
-                        score1 += 50
-                    space.remove(projectile, projectile.body)
-                    break
-            
+	            if defense > 0: #Within 30s of defense zone
+                    HP -= 25
+                    score2 += 25
+                else: 
+                    HP -= 50
+                    score2 += 50
+                space.remove(projectile, projectile.body)
 
         if local_vis == 1:
             font = pygame.font.Font(None, 25)
@@ -165,31 +168,38 @@ def play(state, player, action):
             screen.blit(text, (8000 * 0.14 / 3 + 57, 25, 0, 0))
 
             # First tick, draw an arrow representing action
-
             if ticks == 1:
-                force = action[2]
-                angle = action[1]
-                position = action[0]
-                draw_arrow(screen, position, angle, force, player)
+                action_type = action[0]
+                if action_type == 1: #Shoot
+                    #TODO
+                elif action_type == 2: #Chase
+                    #TODO
+                elif action_type == 3: #Refill
+                    #TODO
+                elif action_type == 4: #Defense
+                    #TODO
+                elif action_type == 5: #Escape
+                    #TODO
 
             pygame.display.flip()
             if ticks == 1:
                 time.sleep(1)
 
             clock.tick()
-
+           
         # Do post processing and return the next State
         if HP1 == 0 or HP2 == 0 or ticks > TICKS_LIMIT:
-            state_new = {"score1": 0, "score2": 0, "HP1": 0, "HP2": 0, "defense1": 0, "defense2": 0}
-            state_new["position1"] = player1_body.body_position
-            state_new["position2"] = player2_body.body_position
+            state_new = {"location_self": [], "location_op": [], "HP": 0, "defense": 0, "barrel_heat": 0, "projectiles_left": 0}
+            state_new["location_self"] = player1_body.body_position
+            state_new["location_op"] = player2_body.body_position
+            state_new["HP"] = HP
+            state_new["defense"] = defense
+            if action[0] == 1: #Shoot
+                state_new["barrel_heat"] = state_new["barrel_heat"] + action[2]
+                
             return state_new, score1-prevscore1, score2-prevscore2
 
-
-
 # Generate logs
-
-
 def logger(log, msg):
     f = open("logs/"+log, "a")
     f.write(msg)
