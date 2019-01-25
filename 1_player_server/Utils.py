@@ -45,8 +45,76 @@ collision_types = {
     "armor1": 5,
     "armor2": 6
 }
+# player 1
+player1_armors = []
+player1_body = pymunk.Body(500,pymunk.inf)
+player1_body.position = 300, 100
+player1_shape = pymunk.Circle(player1_body, (300*f2))
+player1_shape.elasticity = 0
+player1_shape.friction = 1.0
+player1_shape.color = THECOLORS['red']
+player1_shape.collision_type = collision_types["player"]
+armor = pymunk.Segment(player1_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+armor.color=THECOLORS['black']
+armor.collision_type = collision_types["armor1"]
+player1_armors.append(armor)
+armor = pymunk.Segment(player1_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+armor.color=THECOLORS['black']
+armor.collision_type = collision_types["armor1"]
+player1_armors.append(armor)
+armor = pymunk.Segment(player1_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+armor.color=THECOLORS['black']
+armor.collision_type = collision_types["armor1"]
+player1_armors.append(armor)
+armor = pymunk.Segment(player1_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+armor.color=THECOLORS['black']
+armor.collision_type = collision_types["armor1"]
+player1_armors.append(armor)
+anglen=armor._get_normal
+angle=0
+player1_shape7 = pymunk.Segment(player1_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+player1_shape7.color = THECOLORS['blue']
 
+ #player 2
+ player2_armors = []
+ player2_body = pymunk.Body(500,pymunk.inf)
+ player2_body.position = 500, 600
+ player2_shape = pymunk.Circle(player2_body, (300*f2))
+ player2_shape.elasticity = 0
+ player2_shape.friction = 1.0
+ player2_shape.color = THECOLORS['red']
+ player2_shape.collision_type = collision_types["player2"]
+ armor = pymunk.Segment(player2_body,(-300*f2,-65*f2),(-300*f2,65*f2),2)
+ armor.color=THECOLORS['black']
+ armor.collision_type = collision_types["armor2"]
+ player2_armors.append(armor)
+ armor = pymunk.Segment(player2_body,(-65*f2,-300*f2),(65*f2,-300*f2),2)
+ armor.color=THECOLORS['black']
+ armor.collision_type = collision_types["armor2"]
+ player2_armors.append(armor)
+ armor = pymunk.Segment(player2_body,(300*f2,-65*f2),(300*f2,65*f2),2)
+ armor.color=THECOLORS['black']
+ armor.collision_type = collision_types["armor2"]
+ player2_armors.append(armor)
+ armor = pymunk.Segment(player2_body,(-65*f2,300*f2),(65*f2,300*f2),2)
+ armor.color=THECOLORS['black']
+ armor.collision_type = collision_types["armor2"]
+ player2_armors.append(armor)
+ angle=0
+ player2_shape7 = pymunk.Segment(player2_body,(0,0),(250*f2*cos(angle),250*f2*sin(angle)),3)
+ player2_shape7.color = THECOLORS['blue']
 #TODO Make a function to translate and rotate the bot from a start_pos and start_orientation to a final_post and final_orientation
+def translate_player1(linearspeed,direction):
+    player1_body.velocity=(linearspeed*cos(direction),linearspeed*sin(direction))
+def rotate_player1(angularvelocity):
+    player1_body.angular_velocity = angularvelocity    
+def translate_player2(linearspeed,direction):
+    player2_body.velocity=(linearspeed*cos(direction),linearspeed*sin(direction))
+def rotate_player2(angularvelocity):
+    player2_body.angular_velocity = angularvelocity    
+
+
+    
 
 def spawn_ball(space, position, direction, speed): #TODO Make this function accept a speed of launch
     ball_body = pymunk.Body(1, pymunk.inf)
