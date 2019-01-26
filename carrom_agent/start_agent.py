@@ -44,13 +44,79 @@ def agent_1player(state):
         state, reward = parse_state_message(state)  # Get the state and reward
     except:
         pass
-    a = str(random.random()) + ',' + \
-        str(random.randrange(-45, 225)) + ',' + str(random.random())
+
+    # Choose an action based on observation
+    a = PG.choose_action(state)
+    
     try:
         s.send(a)
     except Exception as e:
         print "Error in sending:",  a, " : ", e
         print "Closing connection"
         flag = 0
+        
+    # Store transition for training
+    PG.store_transition(state, a, reward)
 
     return flag
+
+if __name__ == "__main__":
+
+    # Load checkpoint
+    load_version = 8
+    save_version = load_version + 1
+    load_path = "output/weights/LunarLander/{}/LunarLander-v2.ckpt".format(load_version)
+    save_path = "output/weights/LunarLander/{}/LunarLander-v2.ckpt".format(save_version)
+
+    global PG = PolicyGradient(
+        n_x = ,#add shape of state space
+        n_y = ,#add shape of action space
+        learning_rate=0.02,
+        reward_decay=0.99,
+        load_path=load_path,
+        save_path=save_path
+    )
+
+
+    for episode in range(EPISODES):
+
+        
+        episode_reward = 0
+
+        tic = time.clock()
+
+        while True:
+            state=s.recv(1024)# receive state from server
+            if agent_1player(state)==0:
+                break
+            toc = time.clock()
+            elapsed_sec = toc - tic
+            if elapsed_sec > 180:
+                done = True
+
+            episode_rewards_sum = sum(PG.episode_rewards)
+            if episode_rewards_sum < -250:
+                done = True
+
+            if done:
+                episode_rewards_sum = sum(PG.episode_rewards)
+                rewards.append(episode_rewards_sum)
+                max_reward_so_far = np.amax(rewards)
+
+                print("==========================================")
+                print("Episode: ", episode)
+                print("Seconds: ", elapsed_sec)
+                print("Reward: ", episode_rewards_sum)
+                print("Max reward so far: ", max_reward_so_far)
+
+                # Train neural network
+                discounted_episode_rewards_norm = PG.learn()
+
+                
+
+
+                break
+
+        s.close()
+
+            

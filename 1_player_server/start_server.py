@@ -145,6 +145,7 @@ def play(state_1, action_1, state_2, action_2, score_1, score_2):
     for projectile in projectiles:
         for armor in player1_armors:
             if dist(projectile.body.position, armor.body.position) < 1:
+<<<<<<< HEAD
                 if defense > 0: #Within 30s of defense zone
                     HP_1 -= 25
                     score_2 += SHOOT_HIT_COEFF*25
@@ -161,6 +162,24 @@ def play(state_1, action_1, state_2, action_2, score_1, score_2):
                     HP_2 -= 50
                     score_1 += SHOOT_HIT_COEFF*50
                 space.remove(projectile, projectile.body)
+=======
+            if defense > 0: #Within 30s of defense zone
+                HP_1 -= 25
+                score_2 += SHOOT_HIT_COEFF*25
+            else:
+                HP_1 -= 50
+                score_2 += SHOOT_HIT_COEFF*50
+            space.remove(projectile, projectile.body)
+        for armor in player2_armors:
+            if dist(projectile.body.position, armor.body.position) < 1:
+            if defense > 0: #Within 30s of defense zone
+                HP_2 -= 25
+                score_1 += SHOOT_HIT_COEFF*25
+            else:
+                HP_2 -= 50
+                score_1 += SHOOT_HIT_COEFF*50
+            space.remove(projectile, projectile.body)
+>>>>>>> e6460e659c5a82681c95a4ff36095bebb7065068
 
     pygame.display.flip()
     clock.tick()
@@ -298,11 +317,14 @@ if __name__ == '__main__':
                 barrel_heat_2 = barrel_heat_2 - 12
             elif HP_2 < 400:
                 barrel_heat_2 = barrel_heat_2 - 24
+<<<<<<< HEAD
 
         query = queryinfo()
         if query.sapce.static_body == NONE:
             score_1 = score_1 + ENEMY_SEEN_REWARD*10
             score_2 = score_2 + ENEMY_SEEN_REWARD*10
+=======
+>>>>>>> e6460e659c5a82681c95a4ff36095bebb7065068
                 
         # Defense cooldown
         if next_state["defense"] > 0:
