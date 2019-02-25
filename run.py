@@ -178,11 +178,7 @@ class AIChallenge:
     def make_state(self):
         pygame.image.save(screen, "buffer.png")
         image = cv.imread("buffer.png")
-        cv.namedWindow("Debug", cv.WINDOW_NORMAL)
-        cv.namedWindow("State", cv.WINDOW_NORMAL)
         state = cv.resize(image, (160, 100))
-        cv.imshow("Debug", image)
-        cv.imshow("State", state)
         return state
 
     def car_is_crashed(self, readings):
